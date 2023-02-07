@@ -6,7 +6,7 @@ default_app = initialize_app(cred)
 
 app = Flask(__name__)
 
-
+ 
 @app.route("/")
 def home():
     return "Hello, Flask!"
