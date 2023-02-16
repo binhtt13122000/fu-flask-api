@@ -6,7 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import validators
 from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token, get_jwt_identity
 from src.dtos.account import Account
-from src.services.account import findByEmail, create
+from src.services.account import findByEmail, create, update
 import json
 from bson.json_util import dumps
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
@@ -38,14 +38,19 @@ def login():
 @ auth.post("/register")
 def register():
     req = request.get_json()
-    account = Account(**req)
-    exist = findByEmail(request.json["email"])
-    if exist:
+    accessToken = request.json["accessToken"]
+    decodedToken = authenticator.verify_id_token(accessToken)
+    email = decodedToken["email"]
+
+    isExist = findByEmail(email)
+    if isExist:
         return jsonify({
             "status": "EXIST"
         }), HTTP_400_BAD_REQUEST
+    account = Account(**req)
+    account.email = email
 
-    result = create(account.to_bson())
+    create(account.to_bson())
     access = create_access_token(identity=account.email)
     return jsonify({
         "email": account.email,
@@ -61,4 +66,17 @@ def getProfile():
     result = findByEmail(email)
     if result is None:
         return jsonify({"error": "Not found"}), HTTP_404_NOT_FOUND
+    return jsonify(result), HTTP_200_OK
+
+@ auth.put("/")
+@jwt_required()
+def updateProfile():
+    email = get_jwt_identity()
+    isExist = findByEmail(email)
+    if isExist is None:
+        return jsonify({"error": "Not found"}), HTTP_404_NOT_FOUND
+    req = request.get_json()
+    account = Account(**req)
+    account.email = email
+    result = update(email=email,document=account.to_bson())
     return jsonify(result), HTTP_200_OK
