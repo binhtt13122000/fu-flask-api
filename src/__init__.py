@@ -2,6 +2,7 @@ from flask.json import jsonify
 from src.constants.http_status_codes import HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR
 from src.controllers.auth import auth
 from src.controllers.tag import tag
+from src.controllers.detect import detect
 from flask import Flask, config, redirect
 from firebase_admin import credentials, initialize_app
 import os
@@ -32,6 +33,7 @@ def create_app(test_config=None):
     JWTManager(app)
     app.register_blueprint(auth)
     app.register_blueprint(tag)
+    app.register_blueprint(detect)
 
     @app.get("/hello")
     def redirect_to_url():
