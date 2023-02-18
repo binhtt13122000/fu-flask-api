@@ -13,7 +13,9 @@ def create_app(test_config=None):
 
     app = Flask(__name__, instance_relative_config=True)
     cred = credentials.Certificate("firebase_admin_sdk.json")
-    default_app = initialize_app(cred)
+    default_app = initialize_app(cred, {
+        'storageBucket': 'fu-pet-ai.appspot.com'
+    })
     if test_config is None:
         app.config.from_mapping(
             SECRET_KEY=os.environ.get("SECRET_KEY"),
