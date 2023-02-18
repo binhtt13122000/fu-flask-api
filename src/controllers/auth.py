@@ -49,7 +49,6 @@ def register():
         }), HTTP_400_BAD_REQUEST
     account = Account(**req)
     account.email = email
-
     create(account.to_bson())
     access = create_access_token(identity=account.email)
     return jsonify({
@@ -79,4 +78,6 @@ def updateProfile():
     account = Account(**req)
     account.email = email
     result = update(email=email,document=account.to_bson())
+    print(result)
+    result["_id"] = None
     return jsonify(result), HTTP_200_OK
