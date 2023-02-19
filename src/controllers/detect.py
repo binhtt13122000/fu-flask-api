@@ -61,7 +61,7 @@ def detectSystemModel():
     convnet = fully_connected(convnet, 1024, activation ='relu')
     convnet = dropout(convnet, 0.8)
 
-    convnet = fully_connected(convnet, 8, activation ='softmax')
+    convnet = fully_connected(convnet, 2, activation ='softmax')
     convnet = regression(convnet, optimizer ='adam', learning_rate = LR,
         loss ='categorical_crossentropy', name ='targets')
 
@@ -119,14 +119,8 @@ def detectSystemModel():
     shuffle(testing_data)
     model_out = model.predict([np.array(img).reshape(IMG_SIZE, IMG_SIZE, 1)])[0]
     result = np.argmax(model_out)
-    if result==0: str_label ='Bird'
-    elif result== 1: str_label ='Cat'
-    elif result== 2: str_label ='Chair'
-    elif result== 3: str_label ='Dog'
-    elif result== 4: str_label ='Fish'
-    elif result== 5: str_label ='Person'
-    elif result== 6: str_label='Pig'
-    elif result== 7: str_label='Table'
+    if result == 1: str_label ='Dog'
+    else: str_label ='Cat'
 
     return jsonify({
             "detect": str_label,
