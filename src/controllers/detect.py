@@ -1,7 +1,6 @@
 from src.constants.http_status_codes import HTTP_200_OK
 from flask import Blueprint, request, jsonify
 # from src.services.model import model, IMG_SIZE
-from firebase_admin import storage
 import numpy as np
 import cv2
 import tflearn
@@ -9,9 +8,6 @@ from tflearn.layers.conv import conv_2d, max_pool_2d
 from tflearn.layers.core import input_data, dropout, fully_connected
 from tflearn.layers.estimator import regression
 from random import shuffle
-from firebase_admin import storage
-from io import BytesIO
-import gcsfs
 from tensorflow.python.framework import ops
 
 
