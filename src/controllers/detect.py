@@ -20,17 +20,17 @@ detect = Blueprint("detect", __name__, url_prefix="/api/v1/detect")
 
 @detect.post("/system-model")
 def detectSystemModel():
-    f = request.files['file']
+    file = request.files['file']
     IMG_SIZE = 50
     LR = 1e-3
     # bucket = storage.bucket('fu-pet-ai.appspot.com')
-    # # blobs = list(bucket.list_blobs())
-    # # blob = bucket.blob('system-model/model.tfl.data-00000-of-00001')
-    # # blob.download_to_filename('model.tfl.data-00000-of-00001')
-    # # blob = bucket.blob('system-model/model.tfl.index')
-    # # blob.download_to_filename('model.tfl.index')
-    # # blob = bucket.blob('system-model/model.tfl.meta')
-    # # blob.download_to_filename('model.tfl.meta')
+    # blobs = list(bucket.list_blobs())
+    # blob = bucket.blob('system-model/model.tfl.data-00000-of-00001')
+    # blob.download_to_filename('model.tfl.data-00000-of-00001')
+    # blob = bucket.blob('system-model/model.tfl.index')
+    # blob.download_to_filename('model.tfl.index')
+    # blob = bucket.blob('system-model/model.tfl.meta')
+    # blob.download_to_filename('model.tfl.meta')
     # bucket = client.get_bucket('your-bucket-name')
 
     # # Lấy đối tượng blob (tức là tệp tin) và đọc nội dung của nó
@@ -79,23 +79,23 @@ def detectSystemModel():
 
     # Tải mô hình từ tệp TFL trong bộ nhớ đệm
     # model = tflearn.DNN.load(tfl_buffer)
-    bucket = storage.bucket()
-    blob_index = bucket.blob('system-model/model.tfl.index')
-    blob_meta = bucket.blob('system-model/model.tfl.meta')
-    blob_data = bucket.blob('system-model/model.tfl.data-00000-of-00001')
+    # bucket = storage.bucket()
+    # blob_index = bucket.blob('system-model/model.tfl.index')
+    # blob_meta = bucket.blob('system-model/model.tfl.meta')
+    # blob_data = bucket.blob('system-model/model.tfl.data-00000-of-00001')
     # tfl_index = blob_index.download_as_string()
     # tfl_meta = blob_meta.download_as_string()
     # tfl_data = blob_data.download_as_string()
     # model.load(self=None, model_file='model.tfl', weights_bytes=tfl_data, meta_file_bytes=tfl_meta, checkpoint_path_bytes=tfl_index)
-    bytes_index = blob_index.download_as_bytes()
-    bytes_meta = blob_meta.download_as_bytes()
-    bytes_data = blob_data.download_as_bytes()
+    # bytes_index = blob_index.download_as_bytes()
+    # bytes_meta = blob_meta.download_as_bytes()
+    # bytes_data = blob_data.download_as_bytes()
 
     # Tạo file-like object từ các bytes
-    index_file = BytesIO(bytes_index)
-    meta_file = BytesIO(bytes_meta)
-    data_file = BytesIO(bytes_data)
-    model.load('https://firebasestorage.googleapis.com/v0/b/fu-pet-ai.appspot.com/o/system-model%2Fmodel.tfl.index?alt=media&token=7fa82b16-16fa-400e-9c4a-e1cdd22b627b')
+    # index_file = BytesIO(bytes_index)
+    # meta_file = BytesIO(bytes_meta)
+    # data_file = BytesIO(bytes_data)
+    # model.load('https://firebasestorage.googleapis.com/v0/b/fu-pet-ai.appspot.com/o/system-model%2Fmodel.tfl.index?alt=media&token=7fa82b16-16fa-400e-9c4a-e1cdd22b627b')
     # # Load model bằng tflearn
     # model = tflearn.DNN(convnet, tensorboard_verbose=0)
     # model.load({'checkpoint_path_bytes': index_file, 'meta_file_bytes': meta_file, 'weights_bytes': data_file})
@@ -108,7 +108,7 @@ def detectSystemModel():
     #     model.load(f)
     # model.load('model.tfl')
     #read image file string data
-    filestr = f.read()
+    filestr = file.read()
     #convert string data to numpy array
     file_bytes = np.fromstring(filestr, np.uint8)
     # convert numpy array to image
