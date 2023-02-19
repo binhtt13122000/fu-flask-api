@@ -1,4 +1,4 @@
-from src.constants.http_status_codes import HTTP_200_OK
+from src.constants.http_status_codes import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from flask import Blueprint, request, jsonify
 # from src.services.model import model, IMG_SIZE
 import numpy as np
@@ -9,16 +9,23 @@ from tflearn.layers.core import input_data, dropout, fully_connected
 from tflearn.layers.estimator import regression
 from random import shuffle
 from tensorflow.python.framework import ops
-
+from src.services.model import IMG_SIZE, LR, label_img
 
 detect = Blueprint("detect", __name__, url_prefix="/api/v1/detect")
 
-
 @detect.post("/system-model")
 def detectSystemModel():
+    if 'file' not in request.files:
+        return jsonify({
+            'message': 'No file part',
+            'status': HTTP_400_BAD_REQUEST
+        })
     file = request.files['file']
-    IMG_SIZE = 50
-    LR = 1e-3
+    if file.filename == '':
+         return jsonify({
+            'message': 'No selected file',
+            'status': HTTP_400_BAD_REQUEST
+        })
     # bucket = storage.bucket('fu-pet-ai.appspot.com')
     # blobs = list(bucket.list_blobs())
     # blob = bucket.blob('system-model/model.tfl.data-00000-of-00001')
@@ -60,7 +67,6 @@ def detectSystemModel():
     convnet = fully_connected(convnet, 2, activation ='softmax')
     convnet = regression(convnet, optimizer ='adam', learning_rate = LR,
         loss ='categorical_crossentropy', name ='targets')
-
     model = tflearn.DNN(convnet, tensorboard_dir ='log')
     # bucket = storage.bucket('fu-pet-ai.appspot.com')
 
@@ -102,7 +108,7 @@ def detectSystemModel():
     #     print(f)
     #     model = tflearn.DNN(convnet, tensorboard_dir ='log')
     #     model.load(f)
-    # model.load('model.tfl')
+    model.load('model.tfl')
     #read image file string data
     filestr = file.read()
     #convert string data to numpy array
@@ -120,4 +126,75 @@ def detectSystemModel():
 
     return jsonify({
             "detect": str_label,
+        }), HTTP_200_OK
+
+@detect.post("/train-model")
+def trainModelUser():
+    userId = request.form['userId']
+    if 'file' not in request.files:
+        return jsonify({
+            'message': 'No file part',
+            'status': HTTP_400_BAD_REQUEST
+        })
+    file = request.files['file']
+    if file.filename == '':
+         return jsonify({
+            'message': 'No selected file',
+            'status': HTTP_400_BAD_REQUEST
+        })
+    ops.reset_default_graph()
+    convnet = input_data(shape =[None, IMG_SIZE, IMG_SIZE, 1], name ='input')
+
+    convnet = conv_2d(convnet, 32, 5, activation ='relu')
+    convnet = max_pool_2d(convnet, 5)
+
+    convnet = conv_2d(convnet, 64, 5, activation ='relu')
+    convnet = max_pool_2d(convnet, 5)
+
+    convnet = conv_2d(convnet, 128, 5, activation ='relu')
+    convnet = max_pool_2d(convnet, 5)
+
+    convnet = conv_2d(convnet, 64, 5, activation ='relu')
+    convnet = max_pool_2d(convnet, 5)
+
+    convnet = conv_2d(convnet, 32, 5, activation ='relu')
+    convnet = max_pool_2d(convnet, 5)
+
+    convnet = fully_connected(convnet, 1024, activation ='relu')
+    convnet = dropout(convnet, 0.8)
+
+    convnet = fully_connected(convnet, 2, activation ='softmax')
+    convnet = regression(convnet, optimizer ='adam', learning_rate = LR,
+        loss ='categorical_crossentropy', name ='targets')
+    model = tflearn.DNN(convnet, tensorboard_dir ='log')
+    model.load('model.tfl')
+    label = label_img(file.filename)
+
+    # Pre-processing file
+    filestr = file.read()
+    #convert string data to numpy array
+    file_bytes = np.fromstring(filestr, np.uint8)
+    # convert numpy array to image
+    img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
+    img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
+    training_data = []
+    training_data.append([np.array(img), np.array(label)])
+    shuffle(training_data)
+
+    # Pre-trained model
+    X = np.array([i[0] for i in training_data]).reshape(-1, IMG_SIZE, IMG_SIZE, 1)
+    Y = [i[1] for i in training_data]
+    test_x = np.array([i[0] for i in training_data]).reshape(-1, IMG_SIZE, IMG_SIZE, 1)
+    test_y = [i[1] for i in training_data]
+    MODEL_NAME = 'dogsvscats-{}-{}.model'.format(LR, '6conv-basic')
+    model.fit({'input': X}, {'targets': Y}, n_epoch = 50,
+	validation_set =({'input': test_x}, {'targets': test_y}),
+	snapshot_step = 500, show_metric = True, run_id = MODEL_NAME)
+    
+    # Save pre-trained model
+    model.save(MODEL_NAME)
+    # save model
+    model.save("model.tfl")
+    return jsonify({
+            "status": 'ok',
         }), HTTP_200_OK
