@@ -131,17 +131,6 @@ def detectSystemModel():
 @detect.post("/train-model")
 def trainModelUser():
     userId = request.form['userId']
-    if 'file' not in request.files:
-        return jsonify({
-            'message': 'No file part',
-            'status': HTTP_400_BAD_REQUEST
-        })
-    file = request.files['file']
-    if file.filename == '':
-         return jsonify({
-            'message': 'No selected file',
-            'status': HTTP_400_BAD_REQUEST
-        })
     ops.reset_default_graph()
     convnet = input_data(shape =[None, IMG_SIZE, IMG_SIZE, 1], name ='input')
 
@@ -168,18 +157,20 @@ def trainModelUser():
         loss ='categorical_crossentropy', name ='targets')
     model = tflearn.DNN(convnet, tensorboard_dir ='log')
     model.load('model.tfl')
-    label = label_img(file.filename)
 
     # Pre-processing file
-    filestr = file.read()
-    #convert string data to numpy array
-    file_bytes = np.fromstring(filestr, np.uint8)
-    # convert numpy array to image
-    img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
-    img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
-    training_data = []
-    training_data.append([np.array(img), np.array(label)])
-    shuffle(training_data)
+    for file in request.files.getlist('file'):
+        if file.filename != '':
+            label = label_img(file.filename)
+            filestr = file.read()
+            #convert string data to numpy array
+            file_bytes = np.fromstring(filestr, np.uint8)
+            # convert numpy array to image
+            img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
+            img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
+            training_data = []
+            training_data.append([np.array(img), np.array(label)])
+            shuffle(training_data)
 
     # Pre-trained model
     X = np.array([i[0] for i in training_data]).reshape(-1, IMG_SIZE, IMG_SIZE, 1)
