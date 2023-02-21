@@ -1,14 +1,19 @@
-import tflearn
-from tflearn.layers.conv import conv_2d, max_pool_2d
-from tflearn.layers.core import input_data, dropout, fully_connected
-from tflearn.layers.estimator import regression
+from PIL import Image
+import io
+from werkzeug.exceptions import BadRequest
 
-IMG_SIZE = 50
-LR = 1e-3
+def get_prediction(img_bytes,model):
+    img = Image.open(io.BytesIO(img_bytes))
+    imgs = [img]  # batched list of images
+    # inference
+    results = model(imgs, size=640)  
+    return results
 
-'''label'''
-def label_img(img):
-	word_label = img.split('.')[-3]
-
-	if word_label == 'cat': return [1, 0]
-	elif word_label == 'dog': return [0, 1]
+def extract_img(request):
+    # checking if image uploaded is valid
+    if 'file' not in request.files:
+        raise BadRequest("Missing file parameter!")
+    file = request.files['file']
+    if file.filename == '':
+        raise BadRequest("Given file is invalid")
+    return file
