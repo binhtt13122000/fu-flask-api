@@ -8,7 +8,7 @@ class Account(BaseModel):
     id: Optional[PydanticObjectId] = Field(None, alias="_id")
     name: str
     grade: str
-    school: str
+    school: str 
     birthDate: str
     email: str
     phoneNumber: str

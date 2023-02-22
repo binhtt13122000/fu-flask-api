@@ -1,7 +1,10 @@
 FROM python:3.8
 
 COPY requirements.txt /opt/
-RUN pip3 install -r /opt/requirements.txt
+RUN pip install --upgrade pip
+RUN pip install -r /opt/requirements.txt
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
+
 
 WORKDIR /opt
 COPY . .
