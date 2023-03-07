@@ -8,7 +8,6 @@ from firebase_admin import credentials, initialize_app
 import os
 from flask_jwt_extended import JWTManager
 
-
 def create_app(test_config=None):
 
     app = Flask(__name__, instance_relative_config=True)
