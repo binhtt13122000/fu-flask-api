@@ -1,5 +1,7 @@
 from src.constants.http_status_codes import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from flask import Blueprint, request, jsonify, make_response
+import numpy as np
+from PIL import Image
 from firebase_admin import storage
 from src.services.model import extract_img, get_prediction
 import cv2
@@ -7,6 +9,7 @@ import torch
 import base64
 import tempfile
 import os
+import io
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from pydrive.auth import GoogleAuth
@@ -31,18 +34,48 @@ folderLabelId='1GIWPAAyZ3dQ9OoJI6KwmTXhdJUgqu3G9'
 @detect.post("/system-model")
 def detectSystemModel():
     file = extract_img(request)
-    img_bytes = file.read()
-    # choice of the modelcd Des
-    results = get_prediction(img_bytes,modelSystem)
-    # updates results.imgs with boxes and labels
+    # Load the image
+    img = Image.open(file).convert('RGB')
+
+    # Convert the image to a numpy array
+    img_array = np.array(img)
+
+    # Use YOLOv5 to detect objects in the image
+    results = modelSystem(img_array)
+
+    # Extract the bounding boxes, class labels, and confidence scores from the results
+    boxes = results.xyxy[0].numpy().tolist()
+    class_ids = results.pred[0].numpy()[:, 5].tolist() # extract class ids
+    labels = [results.names[int(class_id)] for class_id in class_ids] # convert class ids to labels
+    scores = results.pred[0].numpy()[:, 4].tolist() # extract confidence scores
+
+    # Loop over the bounding boxes and draw them on the image
+    detections = []
+    for i, box in enumerate(boxes):
+        x1, y1, x2, y2, score, class_id = box
+        label = results.names[int(class_id)]
+        conf = f"{score:.2f}"
+        cropped_img = img.crop((x1, y1, x2, y2))
+        # Convert the image to a base64-encoded string
+        output = io.BytesIO()
+        cropped_img.save(output, format='JPEG')
+        output.seek(0)
+        result_bytes_crop = output.getvalue()
+        result_str_crop = base64.b64encode(result_bytes_crop).decode('utf-8')
+        # cropped_img_base64 = base64.b64encode(cropped_img.tobytes()).decode('utf-8')
+        detections.append({'label': label, 'confidence': conf, 'image': result_str_crop})
     results.render()
     # encoding the resulting image and return it
     for img in results.ims:
         RGB_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         im_arr = cv2.imencode('.jpg', RGB_img)[1]
-        response = make_response(im_arr.tobytes())
-        response.headers['Content-Type'] = 'image/jpeg'
-    return response
+        result_bytes = im_arr.tobytes()
+        # response = make_response(im_arr.tobytes())
+    
+    # Encode the bytes using base64
+    result_str = base64.b64encode(result_bytes).decode('utf-8')
+
+    return jsonify({'result': result_str, 'detections': detections})
 
 @detect.post("/upload-data")
 def uploadDataSet():
