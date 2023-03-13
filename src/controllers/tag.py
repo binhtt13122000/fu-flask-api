@@ -11,9 +11,16 @@ from src.dtos.tag import Tag
 from src.services.tag import getAll, create
 tag = Blueprint("tag", __name__, url_prefix="/api/v1/tag")
 
+@tag.get("/hello")
+# @jwt_required()
+def getAllTag1():
+    return jsonify({
+        'status': 'ok'
+    })
+
 
 @tag.get("/")
-@jwt_required()
+# @jwt_required()
 def getAllTag():
     return json.loads(dumps(getAll())), HTTP_200_OK
 

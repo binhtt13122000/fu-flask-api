@@ -1,0 +1,4 @@
+train: C:\Users\SE141208\Desktop\fu-flask-api\src\models\users\1\train
+
+nc: 2 #number of classes
+names: ['lion', 'tiger']
