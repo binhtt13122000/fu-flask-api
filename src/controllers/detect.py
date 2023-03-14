@@ -28,8 +28,8 @@ detect = Blueprint("detect", __name__, url_prefix="/api/v1/detect")
 modelSystem = torch.hub.load('ultralytics/yolov5', 'custom', path='src\models\system\yolov5s.pt', verbose=False)
 modelSystem.eval()
 
-folderImageId='1AzA8Df1M0t0zMizdOwnS_Q-_Vs74OQ_4'
-folderLabelId='1GIWPAAyZ3dQ9OoJI6KwmTXhdJUgqu3G9'
+folderImageId='17aKLMvv8nw8NkjNpcitmlSs2Uv-ycAMG'
+folderLabelId='1NMYR2L0wa5Q_DTmNaqWbb6pqpSxm0sim'
 
 @detect.post("/system-model")
 def detectSystemModel():
