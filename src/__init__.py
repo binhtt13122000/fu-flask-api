@@ -3,6 +3,7 @@ from src.constants.http_status_codes import HTTP_404_NOT_FOUND, HTTP_500_INTERNA
 from src.controllers.auth import auth
 from src.controllers.tag import tag
 from src.controllers.detect import detect
+from src.controllers.room import room
 from flask import Flask, config, redirect
 from firebase_admin import credentials, initialize_app
 import os
@@ -35,6 +36,7 @@ def create_app(test_config=None):
     app.register_blueprint(auth)
     app.register_blueprint(tag)
     app.register_blueprint(detect)
+    app.register_blueprint(room)
 
     @app.get("/hello")
     def redirect_to_url():

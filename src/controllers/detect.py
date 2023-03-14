@@ -10,14 +10,7 @@ import base64
 import tempfile
 import os
 import io
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
-
-gauth = GoogleAuth()       
-gauth.LocalWebserverAuth()    
-drive = GoogleDrive(gauth)  
+from src.services.drive import drive
 
 detect = Blueprint("detect", __name__, url_prefix="/api/v1/detect")
 
@@ -94,6 +87,7 @@ def uploadDataSet():
     # Upload file image
     file_name_image = image.filename
     gfile = drive.CreateFile({'parents': [{'id': folderImageId, 'title': file_name_image}]})
+    
     # Save file to temporary directory
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         image.save(tmp.name)
@@ -102,19 +96,38 @@ def uploadDataSet():
     # Set content of file
     gfile.SetContentFile(file_path_image)
     gfile.Upload() # Upload the file.
+    gfile.InsertPermission({
+        'type': 'anyone',
+        'value': 'anyone',
+        'role': 'reader',
+    })
+        # Set public access and download URL
+    gfile['alternateLink'] = None  # Set to None to disable webContentLink
+    gfile['shared'] = True
+    
     gfile['title'] = file_name_image
     gfile.Upload()
 
     # Upload file label
     file_name_label = label.filename
     gfile = drive.CreateFile({'parents': [{'id': folderLabelId, 'title': file_name_label}]})
+    
     with tempfile.NamedTemporaryFile(delete=False) as tmp1:
         label.save(tmp1.name)
         file_path_label = tmp1.name
-    
     # Set content of file
     gfile.SetContentFile(file_path_label)
     gfile.Upload() # Upload the file.
+
+    gfile.InsertPermission({
+        'type': 'anyone',
+        'value': 'anyone',
+        'role': 'reader',
+    })
+        # Set public access and download URL
+    gfile['alternateLink'] = None  # Set to None to disable webContentLink
+    gfile['shared'] = True
+    
     gfile['title'] = file_name_label
     gfile.Upload()
 
@@ -122,10 +135,27 @@ def uploadDataSet():
         'status': 'ok'
     })
     
-@detect.post("/train-model")
+@detect.post("/create-room")
 def trainModelUser():
     userId = request.form['userId']
     
     return jsonify({
             "status": 'ok',
         }), HTTP_200_OK
+
+@detect.get("/list-files")
+def getListFilesByFolderId():
+    folderId = request.args.get('folderId')
+    file_list = drive.ListFile({'q': "'{}' in parents and trashed=false".format(folderId)}).GetList()
+    file_list_convert = []
+    for file in file_list:
+        file_list_convert.append({
+            'id': file['id'],
+            'title': file['title'], 
+            'thumnailLink': file['thumbnailLink'],
+            'downloadLink': file['webContentLink']
+        })
+    
+    return jsonify({
+        'listFiles': file_list_convert
+    })
