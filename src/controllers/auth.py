@@ -5,9 +5,47 @@ from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identi
 from src.dtos.account import Account
 from src.services.account import findByEmail, create, update
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
+import json
 
 auth = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
 
+
+@auth.route('/authorize')
+def authorize():
+    email = request.args.get('email')
+    if email is None:
+        return jsonify({
+            'error': 'Required email parameter!'
+        }), HTTP_400_BAD_REQUEST
+    userAdmin = findByEmail(email=email)
+    if userAdmin is None:
+        return jsonify({
+            'error': 'User is not found!'
+        }), HTTP_404_NOT_FOUND
+    gauth = GoogleAuth()
+    gauth.LocalWebserverAuth() # This will open a new browser tab for authorization
+    drive = GoogleDrive(gauth) 
+    query = f"mimeType='application/vnd.google-apps.folder' and trashed=false and title='{folder_name}'"
+    folders = drive.ListFile({'q': query}).GetList()
+
+    if len(folders) == 0:
+        # No folder with the given name exists, create a new folder
+        folder_metadata = {'title': folder_name, 'mimeType': 'application/vnd.google-apps.folder'}
+        folder = drive.CreateFile(folder_metadata)
+        folder.Upload()
+
+        # Get the folder ID of the newly created folder
+        folder_parent_id = folder['id']
+    else:
+        # A folder with the given name already exists, get its ID
+        folder_parent_id = folders[0]['id']
+    credentials_json = gauth.credentials.to_json()
+    userAdmin['credentials'] = json.loads(credentials_json)
+    result = update(email=email,document=userAdmin)
+    result["_id"] = None
+    return jsonify(result), HTTP_200_OK
 
 @auth.post("/login")
 def login():

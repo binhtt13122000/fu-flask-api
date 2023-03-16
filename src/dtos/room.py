@@ -11,6 +11,7 @@ class Room(BaseModel):
     imageId: str 
     labelId: str
     trainURL: Optional[str] = None
+    email: str
 
     def to_json(self):
         return jsonify(self, exclude_none=True)

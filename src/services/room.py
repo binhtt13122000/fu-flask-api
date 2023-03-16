@@ -10,8 +10,10 @@ def findById(id: str):
         "_id": ObjectId(id)
     })
 
-def getList():
-    return rooms.find()
+def getList(email: str):
+    return rooms.find({
+        'email': email
+    })
 
 
 def create(document):

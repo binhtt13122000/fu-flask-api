@@ -5,7 +5,8 @@ from src.services.room import findById, create, getList,delete, update
 import json
 from bson.json_util import dumps
 from src.services.drive import drive, folder_parent_id
-
+from src.services.account import findByEmail
+from pydrive.auth import GoogleAuth
 
 room = Blueprint("room", __name__, url_prefix="/api/v1/room")
 
@@ -14,6 +15,23 @@ label_folder_name = 'labels'
 
 @ room.post("/create-room")
 def createRoom():
+    email = request.json["email"]
+    if email is None:
+        return jsonify({
+            'error': 'Required email parameter!'
+        }), HTTP_400_BAD_REQUEST
+    userAdmin = findByEmail(email=email)
+    if userAdmin is None:
+        return jsonify({
+            'error': 'User is not found!'
+        }), HTTP_404_NOT_FOUND
+    gauth = GoogleAuth()
+    credentials = userAdmin['credentials']
+    if credentials is None:
+        return jsonify({
+            'error': 'Created User doesnt connect drive!'
+        }), HTTP_400_BAD_REQUEST
+    gauth.credentials.from_json(credentials)
     roomName = request.json["name"]
     root_folder = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()[0]
     existing_folders = drive.ListFile({'q': f"'{root_folder['id']}' in parents and trashed=false"}).GetList()
@@ -58,6 +76,7 @@ def createRoom():
             roomId = roomId,
             imageId = imageId,
             labelId = labelId,
+            email= userAdmin['email']
         )
 
         id = create(room.to_bson())
@@ -67,6 +86,7 @@ def createRoom():
             'roomId': room.roomId,
             'imageId': room.imageId,
             'labelId': room.labelId,
+            'email': room.email
         }), HTTP_201_CREATED
     else:
         return jsonify({
@@ -75,7 +95,12 @@ def createRoom():
 
 @room.get("/list-room")
 def getRooms():
-    result = getList()
+    email = request.args.get('email')
+    if email is None:
+        return jsonify({
+            'error': 'Required email parameter!'
+        }), HTTP_400_BAD_REQUEST
+    result = getList(email=email)
     return json.loads(dumps(result))
 
 @room.get("/<string:room_id>")

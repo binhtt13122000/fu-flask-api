@@ -1,3 +1,4 @@
+from bson.objectid import ObjectId
 from pymongo import ReturnDocument
 from src.services.db import db
 
@@ -10,6 +11,11 @@ def findByEmail(email: str):
     },
         {'_id': False}
     )
+
+def findById(id: str):
+    return accounts.find_one({
+        "_id": ObjectId(id)
+    })
 
 
 def create(document):

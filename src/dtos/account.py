@@ -12,6 +12,7 @@ class Account(BaseModel):
     email: str
     phoneNumber: str
     address: str
+    credentials: Optional[dict] = None
 
     def to_json(self):
         return jsonify(self, exclude_none=True)
