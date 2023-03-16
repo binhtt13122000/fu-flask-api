@@ -10,6 +10,7 @@ class Room(BaseModel):
     roomId: str
     imageId: str 
     labelId: str
+    trainURL: Optional[str] = None
 
     def to_json(self):
         return jsonify(self, exclude_none=True)

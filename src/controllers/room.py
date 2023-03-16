@@ -1,12 +1,12 @@
 from os import access
-from src.constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_409_CONFLICT, HTTP_404_NOT_FOUND
+from src.constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_409_CONFLICT, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR
 from flask import Blueprint, app, request, jsonify
 from firebase_admin import auth as authenticator
 from werkzeug.security import check_password_hash, generate_password_hash
 import validators
 from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token, get_jwt_identity
 from src.dtos.room import Room
-from src.services.room import findById, create
+from src.services.room import findById, create, getList,delete, update
 import json
 from bson.json_util import dumps
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
@@ -20,7 +20,7 @@ image_folder_name = 'images'
 label_folder_name = 'labels'
 
 @ room.post("/create-room")
-def register():
+def createRoom():
     roomName = request.json["name"]
     root_folder = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()[0]
     existing_folders = drive.ListFile({'q': f"'{root_folder['id']}' in parents and trashed=false"}).GetList()
@@ -81,27 +81,64 @@ def register():
             'error': 'Room name have been existed!'
         }), HTTP_400_BAD_REQUEST
 
+@room.get("/list-room")
+def getRooms():
+    result = getList()
+    return json.loads(dumps(result))
 
-# @ auth.get("/profile")
-# @jwt_required()
-# def getProfile():
-#     email = get_jwt_identity()
-#     result = findByEmail(email)
-#     if result is None:
-#         return jsonify({"error": "Not found"}), HTTP_404_NOT_FOUND
-#     return jsonify(result), HTTP_200_OK
+@room.put('/update-room')
+def updateRoom():
+    try:
+        data = request.get_json()
+        id = data.get('id')
+        newName = data.get('name')
+        trainURL = data.get('trainURL')
 
-# @ auth.put("/")
-# @jwt_required()
-# def updateProfile():
-#     email = get_jwt_identity()
-#     isExist = findByEmail(email)
-#     if isExist is None:
-#         return jsonify({"error": "Not found"}), HTTP_404_NOT_FOUND
-#     req = request.get_json()
-#     account = Account(**req)
-#     account.email = email
-#     result = update(email=email,document=account.to_bson())
-#     print(result)
-#     result["_id"] = None
-#     return jsonify(result), HTTP_200_OK
+        room = findById(id)
+        if room is None:
+            return jsonify({"error": "Not found"}), HTTP_404_NOT_FOUND
+        
+        roomId = room['roomId']
+        if newName is not None:
+            # Get handle to the folder to be updated
+            folder = drive.CreateFile({'id': roomId})
+            folder.FetchMetadata()
+            # Update the folder name
+            folder['title'] = newName
+            folder.Upload()
+
+        print(room)
+        room['name'] = newName
+        room['trainURL'] = trainURL
+        print(room)
+        result = update(id=id,document=room)
+        result['_id'] = str(result['_id'])
+        return json.loads(dumps(result)), HTTP_200_OK
+    except:
+        return jsonify({'error': 'Failed to update room.'}), HTTP_500_INTERNAL_SERVER_ERROR
+
+
+@room.delete('/delete-room')
+def deleteRoom():
+    id = request.json["id"]
+    room = findById(id)
+    if room is None:
+        return jsonify({"error": "Not found"}), HTTP_404_NOT_FOUND
+    roomId = room['roomId']
+    try:
+        # Delete the document with the given ID
+        result = delete(room['_id'])
+        # Check if the deletion was successful
+        if result.deleted_count == 1:
+            # Retrieve folder with given ID
+            folder = drive.CreateFile({'id': roomId})
+
+            # Check if file is a folder
+            if folder['mimeType'] == 'application/vnd.google-apps.folder':
+                # Delete folder
+                folder.Delete()
+                return jsonify({'message': 'Room deleted successfully.'})
+            else:
+                return jsonify({'error': 'Failed to delete room.'}), HTTP_400_BAD_REQUEST
+    except:
+        return jsonify({'error': 'Failed to delete room.'}), HTTP_500_INTERNAL_SERVER_ERROR
