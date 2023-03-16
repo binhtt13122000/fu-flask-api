@@ -1,14 +1,12 @@
 from src.constants.http_status_codes import HTTP_200_OK, HTTP_400_BAD_REQUEST
-from flask import Blueprint, request, jsonify, make_response
+from flask import Blueprint, request, jsonify
 import numpy as np
 from PIL import Image
-from firebase_admin import storage
-from src.services.model import extract_img, get_prediction
+from src.services.model import extract_img
 import cv2
 import torch
 import base64
 import tempfile
-import os
 import io
 from src.services.drive import drive
 
@@ -74,12 +72,12 @@ def detectSystemModel():
 def uploadDataSet():
     if 'image' not in request.files:
         return jsonify({
-            'message': "Missing file parameter!",
+            'message': "Missing file image parameter!",
             'status': HTTP_400_BAD_REQUEST
         })
     if 'label' not in request.files:
         return jsonify({
-            'message': "Missing file parameter!",
+            'message': "Missing file label parameter!",
             'status': HTTP_400_BAD_REQUEST
         })
     image = request.files['image']
