@@ -1,4 +1,4 @@
-from src.constants.http_status_codes import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from src.constants.http_status_codes import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from flask import Blueprint, request, jsonify
 import numpy as np
 from PIL import Image
@@ -9,6 +9,7 @@ import base64
 import tempfile
 import io
 from src.services.drive import drive
+from src.services.room import findById
 
 detect = Blueprint("detect", __name__, url_prefix="/api/v1/detect")
 
@@ -18,9 +19,6 @@ detect = Blueprint("detect", __name__, url_prefix="/api/v1/detect")
 
 modelSystem = torch.hub.load('ultralytics/yolov5', 'custom', path='src\models\system\yolov5s.pt', verbose=False)
 modelSystem.eval()
-
-folderImageId='17aKLMvv8nw8NkjNpcitmlSs2Uv-ycAMG'
-folderLabelId='1NMYR2L0wa5Q_DTmNaqWbb6pqpSxm0sim'
 
 @detect.post("/system-model")
 def detectSystemModel():
@@ -80,6 +78,13 @@ def uploadDataSet():
             'message': "Missing file label parameter!",
             'status': HTTP_400_BAD_REQUEST
         })
+    id = request.form['id']
+    room = findById(id)
+    if room is None:
+            return jsonify({"error": "Not found room"}), HTTP_404_NOT_FOUND
+
+    folderImageId = room['imageId']
+    folderLabelId = room['labelId']
     image = request.files['image']
     label = request.files['label']
     # Upload file image
@@ -132,14 +137,6 @@ def uploadDataSet():
     return jsonify({
         'status': 'ok'
     })
-    
-@detect.post("/create-room")
-def trainModelUser():
-    userId = request.form['userId']
-    
-    return jsonify({
-            "status": 'ok',
-        }), HTTP_200_OK
 
 @detect.get("/list-files")
 def getListFilesByFolderId():

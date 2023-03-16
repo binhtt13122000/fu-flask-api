@@ -1,14 +1,9 @@
-from os import access
-from src.constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_409_CONFLICT, HTTP_404_NOT_FOUND
-from flask import Blueprint, app, request, jsonify
+from src.constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
+from flask import Blueprint, request, jsonify
 from firebase_admin import auth as authenticator
-from werkzeug.security import check_password_hash, generate_password_hash
-import validators
-from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token, get_jwt_identity
+from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from src.dtos.account import Account
 from src.services.account import findByEmail, create, update
-import json
-from bson.json_util import dumps
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 
 auth = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
@@ -78,6 +73,5 @@ def updateProfile():
     account = Account(**req)
     account.email = email
     result = update(email=email,document=account.to_bson())
-    print(result)
     result["_id"] = None
     return jsonify(result), HTTP_200_OK

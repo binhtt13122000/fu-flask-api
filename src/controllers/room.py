@@ -1,21 +1,14 @@
-from os import access
-from src.constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_409_CONFLICT, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR
-from flask import Blueprint, app, request, jsonify
-from firebase_admin import auth as authenticator
-from werkzeug.security import check_password_hash, generate_password_hash
-import validators
-from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token, get_jwt_identity
+from src.constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR
+from flask import Blueprint, request, jsonify
 from src.dtos.room import Room
 from src.services.room import findById, create, getList,delete, update
 import json
 from bson.json_util import dumps
-from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
-from src.services.drive import drive
+from src.services.drive import drive, folder_parent_id
 
 
 room = Blueprint("room", __name__, url_prefix="/api/v1/room")
 
-parent_folder_id = '1jS_JMY6omPi0HDAZbgZO_5x8ep7IYPeG'
 image_folder_name = 'images'
 label_folder_name = 'labels'
 
@@ -24,13 +17,12 @@ def createRoom():
     roomName = request.json["name"]
     root_folder = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()[0]
     existing_folders = drive.ListFile({'q': f"'{root_folder['id']}' in parents and trashed=false"}).GetList()
-    print(existing_folders)
     folder_exists = any([folder['title'].lower() == roomName.lower() for folder in existing_folders])
     # Create folder room
     if not folder_exists:
         file_metadata_room = {
             'title': roomName,
-            'parents': [{'id': parent_folder_id}], #parent folder
+            'parents': [{'id': folder_parent_id}], #parent folder
             'mimeType': 'application/vnd.google-apps.folder'
         }
 
@@ -86,6 +78,18 @@ def getRooms():
     result = getList()
     return json.loads(dumps(result))
 
+@room.get("/<string:room_id>")
+def getRoomById(room_id):
+    print(room_id)
+    room = findById(room_id)
+    if room is not None:
+        room['_id'] = str(room['_id'])
+        # Room found, return its details as a JSON object
+        return json.loads(dumps(room)), HTTP_200_OK
+    else:
+        # Room not found, return a 404 error
+        return jsonify({'error': 'Room not found'}), HTTP_404_NOT_FOUND
+
 @room.put('/update-room')
 def updateRoom():
     try:
@@ -107,10 +111,8 @@ def updateRoom():
             folder['title'] = newName
             folder.Upload()
 
-        print(room)
         room['name'] = newName
         room['trainURL'] = trainURL
-        print(room)
         result = update(id=id,document=room)
         result['_id'] = str(result['_id'])
         return json.loads(dumps(result)), HTTP_200_OK
