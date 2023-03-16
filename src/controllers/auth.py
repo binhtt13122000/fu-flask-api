@@ -8,11 +8,12 @@ from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identi
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 import json
-
+from flask_cors import cross_origin
 auth = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
 
 
-@auth.route('/authorize')
+@auth.get('/authorize')
+@cross_origin()
 def authorize():
     email = request.args.get('email')
     if email is None:
@@ -27,12 +28,12 @@ def authorize():
     gauth = GoogleAuth()
     gauth.LocalWebserverAuth() # This will open a new browser tab for authorization
     drive = GoogleDrive(gauth) 
-    query = f"mimeType='application/vnd.google-apps.folder' and trashed=false and title='{folder_name}'"
+    query = f"mimeType='application/vnd.google-apps.folder' and trashed=false and title='yololaso1'"
     folders = drive.ListFile({'q': query}).GetList()
 
     if len(folders) == 0:
         # No folder with the given name exists, create a new folder
-        folder_metadata = {'title': folder_name, 'mimeType': 'application/vnd.google-apps.folder'}
+        folder_metadata = {'title': 'yololaso1', 'mimeType': 'application/vnd.google-apps.folder'}
         folder = drive.CreateFile(folder_metadata)
         folder.Upload()
 

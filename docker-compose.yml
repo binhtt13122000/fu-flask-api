@@ -1,11 +1,10 @@
 version: "3.6"
 services:
-  app:
-    # image: binhtt13122000/fu-api
-    build: .
-    restart: always
-    ports:
-      - 5000:5000
+  # app:
+  #   image: binhtt13122000/fu-flask-api
+  #   restart: always
+  #   ports:
+  #     - 5000:5000
   mongo:
     image: mongo
     restart: always

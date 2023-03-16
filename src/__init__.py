@@ -8,6 +8,7 @@ from flask import Flask, config, redirect
 from firebase_admin import credentials, initialize_app
 import os
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 
 def create_app(test_config=None):
 
@@ -33,6 +34,7 @@ def create_app(test_config=None):
         app.config.from_mapping(test_config)
 
     JWTManager(app)
+    cors = CORS(app)
     app.register_blueprint(auth)
     app.register_blueprint(tag)
     app.register_blueprint(detect)

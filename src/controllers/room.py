@@ -7,6 +7,9 @@ from bson.json_util import dumps
 from src.services.drive import drive, folder_parent_id
 from src.services.account import findByEmail
 from pydrive.auth import GoogleAuth
+from oauth2client.client import GoogleCredentials
+from flask_cors import cross_origin
+
 
 room = Blueprint("room", __name__, url_prefix="/api/v1/room")
 
@@ -14,6 +17,7 @@ image_folder_name = 'images'
 label_folder_name = 'labels'
 
 @ room.post("/create-room")
+@cross_origin()
 def createRoom():
     email = request.json["email"]
     if email is None:
@@ -26,12 +30,13 @@ def createRoom():
             'error': 'User is not found!'
         }), HTTP_404_NOT_FOUND
     gauth = GoogleAuth()
-    credentials = userAdmin['credentials']
-    if credentials is None:
+    credentialsJs = userAdmin['credentials']
+    if credentialsJs is None:
         return jsonify({
             'error': 'Created User doesnt connect drive!'
         }), HTTP_400_BAD_REQUEST
-    gauth.credentials.from_json(credentials)
+    credentials = GoogleCredentials.from_json(json.dumps(credentialsJs))
+    gauth.credential = credentials;
     roomName = request.json["name"]
     root_folder = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()[0]
     existing_folders = drive.ListFile({'q': f"'{root_folder['id']}' in parents and trashed=false"}).GetList()
