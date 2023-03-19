@@ -28,12 +28,12 @@ def authorize():
     gauth = GoogleAuth()
     gauth.LocalWebserverAuth() # This will open a new browser tab for authorization
     drive = GoogleDrive(gauth) 
-    query = f"mimeType='application/vnd.google-apps.folder' and trashed=false and title='yololaso1'"
+    query = f"mimeType='application/vnd.google-apps.folder' and trashed=false and title='fu-detect-data'"
     folders = drive.ListFile({'q': query}).GetList()
 
     if len(folders) == 0:
         # No folder with the given name exists, create a new folder
-        folder_metadata = {'title': 'yololaso1', 'mimeType': 'application/vnd.google-apps.folder'}
+        folder_metadata = {'title': 'fu-detect-data', 'mimeType': 'application/vnd.google-apps.folder'}
         folder = drive.CreateFile(folder_metadata)
         folder.Upload()
 

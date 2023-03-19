@@ -99,6 +99,7 @@ def createRoom():
         }), HTTP_400_BAD_REQUEST
 
 @room.get("/list-room")
+@cross_origin()
 def getRooms():
     email = request.args.get('email')
     if email is None:
@@ -109,6 +110,7 @@ def getRooms():
     return json.loads(dumps(result))
 
 @room.get("/<string:room_id>")
+@cross_origin()
 def getRoomById(room_id):
     print(room_id)
     room = findById(room_id)
@@ -121,6 +123,7 @@ def getRoomById(room_id):
         return jsonify({'error': 'Room not found'}), HTTP_404_NOT_FOUND
 
 @room.put('/update-room')
+@cross_origin()
 def updateRoom():
     try:
         data = request.get_json()
@@ -150,10 +153,10 @@ def updateRoom():
         return jsonify({'error': 'Failed to update room.'}), HTTP_500_INTERNAL_SERVER_ERROR
 
 
-@room.delete('/delete-room')
-def deleteRoom():
-    id = request.json["id"]
-    room = findById(id)
+@room.delete('/delete-room/<string:room_id>')
+@cross_origin()
+def deleteRoom(room_id):
+    room = findById(room_id)
     if room is None:
         return jsonify({"error": "Not found"}), HTTP_404_NOT_FOUND
     roomId = room['roomId']
