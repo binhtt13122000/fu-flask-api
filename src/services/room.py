@@ -1,6 +1,7 @@
 from bson.objectid import ObjectId
 from pymongo import ReturnDocument
 from src.services.db import db
+import re
 
 rooms = db.rooms
 
@@ -8,6 +9,11 @@ rooms = db.rooms
 def findById(id: str):
     return rooms.find_one({
         "_id": ObjectId(id)
+    })
+
+def findByName(name: str):
+    return rooms.find_one({
+        "name": {'$regex': name, '$options': 'i'}
     })
 
 def getList(email: str):

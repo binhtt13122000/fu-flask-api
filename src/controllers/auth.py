@@ -4,6 +4,7 @@ from firebase_admin import auth as authenticator
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from src.dtos.account import Account
 from src.services.account import findByEmail, create, update
+from src.services.drive import folder_name
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
@@ -28,12 +29,12 @@ def authorize():
     gauth = GoogleAuth()
     gauth.LocalWebserverAuth() # This will open a new browser tab for authorization
     drive = GoogleDrive(gauth) 
-    query = f"mimeType='application/vnd.google-apps.folder' and trashed=false and title='yololaso1'"
+    query = f"mimeType='application/vnd.google-apps.folder' and trashed=false and title='{folder_name}'"
     folders = drive.ListFile({'q': query}).GetList()
 
     if len(folders) == 0:
         # No folder with the given name exists, create a new folder
-        folder_metadata = {'title': 'yololaso1', 'mimeType': 'application/vnd.google-apps.folder'}
+        folder_metadata = {'title': {folder_name}, 'mimeType': 'application/vnd.google-apps.folder'}
         folder = drive.CreateFile(folder_metadata)
         folder.Upload()
 

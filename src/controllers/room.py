@@ -1,13 +1,14 @@
 from src.constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR
 from flask import Blueprint, request, jsonify
 from src.dtos.room import Room
-from src.services.room import findById, create, getList,delete, update
+from src.services.room import findById, create, getList,delete, update, findByName
 import json
 from bson.json_util import dumps
-from src.services.drive import drive, folder_parent_id
+from src.services.drive import folder_parent_id
 from src.services.account import findByEmail
 from pydrive.auth import GoogleAuth
 from oauth2client.client import GoogleCredentials
+from pydrive.drive import GoogleDrive
 from flask_cors import cross_origin
 
 
@@ -15,6 +16,13 @@ room = Blueprint("room", __name__, url_prefix="/api/v1/room")
 
 image_folder_name = 'images'
 label_folder_name = 'labels'
+
+def getGoogleDrive(credentialsJs):
+    gauth = GoogleAuth()
+    credentials = GoogleCredentials.from_json(json.dumps(credentialsJs))
+    gauth.credential = credentials
+    drive = GoogleDrive(gauth) 
+    return drive
 
 @ room.post("/create-room")
 @cross_origin()
@@ -29,20 +37,25 @@ def createRoom():
         return jsonify({
             'error': 'User is not found!'
         }), HTTP_404_NOT_FOUND
-    gauth = GoogleAuth()
+    
     credentialsJs = userAdmin['credentials']
     if credentialsJs is None:
         return jsonify({
             'error': 'Created User doesnt connect drive!'
         }), HTTP_400_BAD_REQUEST
-    credentials = GoogleCredentials.from_json(json.dumps(credentialsJs))
-    gauth.credential = credentials;
+    drive = getGoogleDrive(credentialsJs=credentialsJs)
     roomName = request.json["name"]
     root_folder = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()[0]
     existing_folders = drive.ListFile({'q': f"'{root_folder['id']}' in parents and trashed=false"}).GetList()
     folder_exists = any([folder['title'].lower() == roomName.lower() for folder in existing_folders])
     # Create folder room
     if not folder_exists:
+        # Check room name have been existed in database
+        room_existed_db = findByName(roomName)
+        if room_existed_db is not None:
+            return jsonify({
+                'error': 'Room name have been existed!'
+            }), HTTP_400_BAD_REQUEST
         file_metadata_room = {
             'title': roomName,
             'parents': [{'id': folder_parent_id}], #parent folder
@@ -105,8 +118,29 @@ def getRooms():
         return jsonify({
             'error': 'Required email parameter!'
         }), HTTP_400_BAD_REQUEST
+    userAdmin = findByEmail(email=email)
+    if userAdmin is None:
+        return jsonify({
+            'error': 'User is not found!'
+        }), HTTP_404_NOT_FOUND
+    credentialsJs = userAdmin['credentials']
+    if credentialsJs is None:
+        return jsonify({
+            'error': 'Created User doesnt connect drive!'
+        }), HTTP_400_BAD_REQUEST
+    drive = getGoogleDrive(credentialsJs=credentialsJs)
+    documents = []
     result = getList(email=email)
-    return json.loads(dumps(result))
+    for document in result:
+        # Query for all the files in the folder
+        query = f"'{document['labelId']}' in parents and trashed=false"
+        file_list = drive.ListFile({'q': query}).GetList()
+
+        # Count the number of files in the list
+        num_files = len(file_list)
+        document['total'] = num_files
+        documents.append(document)
+    return json.loads(dumps(documents)), HTTP_200_OK
 
 @room.get("/<string:room_id>")
 def getRoomById(room_id):
@@ -127,12 +161,28 @@ def updateRoom():
         id = data.get('id')
         newName = data.get('name')
         trainURL = data.get('trainURL')
-
+        email = request.args.get('email')
+        if email is None:
+            return jsonify({
+                'error': 'Required email parameter!'
+            }), HTTP_400_BAD_REQUEST
+        
         room = findById(id)
         if room is None:
             return jsonify({"error": "Not found"}), HTTP_404_NOT_FOUND
         
         roomId = room['roomId']
+        userAdmin = findByEmail(email=email)
+        if userAdmin is None:
+            return jsonify({
+                'error': 'User is not found!'
+            }), HTTP_404_NOT_FOUND
+        credentialsJs = userAdmin['credentials']
+        if credentialsJs is None:
+            return jsonify({
+                'error': 'Created User doesnt connect drive!'
+            }), HTTP_400_BAD_REQUEST
+        drive = getGoogleDrive(credentialsJs=credentialsJs)
         if newName is not None:
             # Get handle to the folder to be updated
             folder = drive.CreateFile({'id': roomId})
@@ -150,13 +200,29 @@ def updateRoom():
         return jsonify({'error': 'Failed to update room.'}), HTTP_500_INTERNAL_SERVER_ERROR
 
 
-@room.delete('/delete-room')
-def deleteRoom():
-    id = request.json["id"]
-    room = findById(id)
+@room.delete('/delete-room/<string:room_id>')
+def deleteRoom(room_id):
+    email = request.args.get('email')
+    if email is None:
+        return jsonify({
+            'error': 'Required email parameter!'
+        }), HTTP_400_BAD_REQUEST
+    room = findById(room_id)
     if room is None:
         return jsonify({"error": "Not found"}), HTTP_404_NOT_FOUND
     roomId = room['roomId']
+
+    userAdmin = findByEmail(email=email)
+    if userAdmin is None:
+        return jsonify({
+            'error': 'User is not found!'
+        }), HTTP_404_NOT_FOUND
+    credentialsJs = userAdmin['credentials']
+    if credentialsJs is None:
+        return jsonify({
+            'error': 'Created User doesnt connect drive!'
+        }), HTTP_400_BAD_REQUEST
+    drive = getGoogleDrive(credentialsJs=credentialsJs)
     try:
         # Delete the document with the given ID
         result = delete(room['_id'])
