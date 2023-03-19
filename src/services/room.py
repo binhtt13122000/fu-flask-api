@@ -11,9 +11,12 @@ def findById(id: str):
     })
 
 def getList(email: str):
-    return rooms.find({
-        'email': email
-    })
+    if email is not None:
+        return rooms.find({
+            'email': email
+        })
+    else:
+        return rooms.find()
 
 
 def create(document):
