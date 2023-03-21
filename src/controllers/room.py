@@ -145,6 +145,12 @@ def getRooms():
         documents.append(document)
     return json.loads(dumps(documents)), HTTP_200_OK
 
+@room.get("/list-room-mobile")
+@cross_origin()
+def getRooms():
+    result = getList(email=None)
+    return json.loads(dumps(result)), HTTP_200_OK
+
 @room.get("/<string:room_id>")
 @cross_origin()
 def getRoomById(room_id):
