@@ -45,6 +45,7 @@ def authorize():
         folder_parent_id = folders[0]['id']
     credentials_json = gauth.credentials.to_json()
     userAdmin['credentials'] = json.loads(credentials_json)
+    userAdmin['folderParentId'] = folder_parent_id
     result = update(email=email,document=userAdmin)
     result["_id"] = None
     return jsonify(result), HTTP_200_OK

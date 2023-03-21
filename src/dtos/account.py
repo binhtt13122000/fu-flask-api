@@ -13,6 +13,7 @@ class Account(BaseModel):
     phoneNumber: str
     address: str
     credentials: Optional[dict] = None
+    folderParentId: Optional[str] = None
 
     def to_json(self):
         return jsonify(self, exclude_none=True)

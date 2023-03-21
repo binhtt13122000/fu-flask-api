@@ -4,7 +4,6 @@ from src.dtos.room import Room
 from src.services.room import findById, create, getList,delete, update, findByName
 import json
 from bson.json_util import dumps
-from src.services.drive import folder_parent_id
 from src.services.account import findByEmail
 from pydrive.auth import GoogleAuth
 from oauth2client.client import GoogleCredentials
@@ -39,10 +38,13 @@ def createRoom():
         }), HTTP_404_NOT_FOUND
     
     credentialsJs = userAdmin['credentials']
+    
     if credentialsJs is None:
         return jsonify({
             'error': 'Created User doesnt connect drive!'
         }), HTTP_400_BAD_REQUEST
+    
+    folderParentId = userAdmin['folderParentId']
     drive = getGoogleDrive(credentialsJs=credentialsJs)
     roomName = request.json["name"]
     root_folder = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()[0]
@@ -58,7 +60,7 @@ def createRoom():
             }), HTTP_400_BAD_REQUEST
         file_metadata_room = {
             'title': roomName,
-            'parents': [{'id': folder_parent_id}], #parent folder
+            'parents': [{'id': folderParentId}], #parent folder
             'mimeType': 'application/vnd.google-apps.folder'
         }
 

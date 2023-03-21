@@ -8,8 +8,9 @@ import torch
 import base64
 import tempfile
 import io
-from src.services.drive import drive
 from src.services.room import findById
+from src.services.account import findByEmail
+from src.controllers.room import getGoogleDrive
 
 detect = Blueprint("detect", __name__, url_prefix="/api/v1/detect")
 
@@ -87,6 +88,19 @@ def uploadDataSet():
     folderLabelId = room['labelId']
     image = request.files['image']
     label = request.files['label']
+    email = request.files['email']
+    userAdmin = findByEmail(email=email)
+    if userAdmin is None:
+        return jsonify({
+            'error': 'User is not found!'
+        }), HTTP_404_NOT_FOUND
+    
+    credentialsJs = userAdmin['credentials']
+    if credentialsJs is None:
+        return jsonify({
+            'error': 'Created User doesnt connect drive!'
+        }), HTTP_400_BAD_REQUEST
+    drive = getGoogleDrive(credentialsJs=credentialsJs)
     # Upload file image
     file_name_image = image.filename
     gfile = drive.CreateFile({'parents': [{'id': folderImageId, 'title': file_name_image}]})
@@ -141,6 +155,23 @@ def uploadDataSet():
 @detect.get("/list-files")
 def getListFilesByFolderId():
     folderId = request.args.get('folderId')
+    email = request.args.get('email')
+    if email is None:
+        return jsonify({
+            'error': 'Required email parameter!'
+        }), HTTP_400_BAD_REQUEST
+
+    userAdmin = findByEmail(email=email)
+    if userAdmin is None:
+        return jsonify({
+            'error': 'User is not found!'
+        }), HTTP_404_NOT_FOUND
+    credentialsJs = userAdmin['credentials']
+    if credentialsJs is None:
+        return jsonify({
+            'error': 'Created User doesnt connect drive!'
+        }), HTTP_400_BAD_REQUEST
+    drive = getGoogleDrive(credentialsJs=credentialsJs)
     file_list = drive.ListFile({'q': "'{}' in parents and trashed=false".format(folderId)}).GetList()
     file_list_convert = []
     for file in file_list:

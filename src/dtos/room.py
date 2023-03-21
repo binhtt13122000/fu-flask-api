@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from src.dtos.objectid import PydanticObjectId
 from flask import jsonify
 
+
 class Room(BaseModel):
     id: Optional[PydanticObjectId] = Field(None, alias="_id")
     name: str
