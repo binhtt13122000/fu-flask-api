@@ -147,7 +147,7 @@ def getRooms():
 
 @room.get("/list-room-mobile")
 @cross_origin()
-def getRooms():
+def getRoomsMobile():
     result = getList(email=None)
     return json.loads(dumps(result)), HTTP_200_OK
 
