@@ -18,8 +18,9 @@ label_folder_name = 'labels'
 
 def getGoogleDrive(credentialsJs):
     gauth = GoogleAuth()
+    print(credentialsJs);
     credentials = GoogleCredentials.from_json(json.dumps(credentialsJs))
-    gauth.credential = credentials
+    gauth.credentials = credentials
     drive = GoogleDrive(gauth) 
     return drive
 
@@ -38,18 +39,23 @@ def createRoom():
         }), HTTP_404_NOT_FOUND
     
     credentialsJs = userAdmin['credentials']
-    
+    print(credentialsJs);
     if credentialsJs is None:
         return jsonify({
             'error': 'Created User doesnt connect drive!'
         }), HTTP_400_BAD_REQUEST
-    
+    print("1");
     folderParentId = userAdmin['folderParentId']
+    print("2");
     drive = getGoogleDrive(credentialsJs=credentialsJs)
+    print("3");
     roomName = request.json["name"]
     root_folder = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()[0]
+    print("4");
     existing_folders = drive.ListFile({'q': f"'{root_folder['id']}' in parents and trashed=false"}).GetList()
+    print("5");
     folder_exists = any([folder['title'].lower() == roomName.lower() for folder in existing_folders])
+    print("6");
     # Create folder room
     if not folder_exists:
         # Check room name have been existed in database

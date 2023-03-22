@@ -18,7 +18,8 @@ detect = Blueprint("detect", __name__, url_prefix="/api/v1/detect")
 # url = "https://raw.githubusercontent.com/ultralytics/yolov5/master/data/coco.yaml"
 # filename, _ = urllib.request.urlretrieve(url, filename="./data.yaml")
 
-modelSystem = torch.hub.load('ultralytics/yolov5', 'custom', path='src\models\system\yolov5s.pt', verbose=False)
+torch.hub._validate_not_a_forked_repo=lambda a,b,c: True
+modelSystem = torch.hub.load('ultralytics/yolov5', 'custom', path='src/models/system/yolov5s.pt', verbose=False)
 modelSystem.eval()
 
 @detect.post("/system-model")
