@@ -87,9 +87,9 @@ def uploadDataSet():
 
     folderImageId = room['imageId']
     folderLabelId = room['labelId']
+    email = room['email']
     image = request.files['image']
     label = request.files['label']
-    email = request.files['email']
     userAdmin = findByEmail(email=email)
     if userAdmin is None:
         return jsonify({

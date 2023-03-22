@@ -18,9 +18,10 @@ label_folder_name = 'labels'
 
 def getGoogleDrive(credentialsJs):
     gauth = GoogleAuth()
-    print(credentialsJs);
     credentials = GoogleCredentials.from_json(json.dumps(credentialsJs))
     gauth.credentials = credentials
+    if credentials.access_token_expired:
+        gauth.Refresh()
     drive = GoogleDrive(gauth) 
     return drive
 
