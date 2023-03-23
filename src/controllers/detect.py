@@ -8,6 +8,8 @@ import torch
 import base64
 import tempfile
 import io
+import threading
+import uuid
 from src.services.room import findById
 from src.services.account import findByEmail
 from src.controllers.room import getGoogleDrive
@@ -21,6 +23,59 @@ detect = Blueprint("detect", __name__, url_prefix="/api/v1/detect")
 torch.hub._validate_not_a_forked_repo=lambda a,b,c: True
 modelSystem = torch.hub.load('ultralytics/yolov5', 'custom', path='src/models/system/yolov5s.pt', verbose=False)
 modelSystem.eval()
+
+# Define a function for uploading a single file
+def upload_file_image(drive, file, folderId):
+    file_name = file.filename
+    gfile = drive.CreateFile({'parents': [{'id': folderId, 'title': file_name}]})
+    
+    # Save file to temporary directory
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        file.save(tmp.name)
+        file_path_image = tmp.name
+    
+    # Set content of file
+    gfile.SetContentFile(file_path_image)
+    gfile.Upload() # Upload the file.
+    gfile.InsertPermission({
+        'type': 'anyone',
+        'value': 'anyone',
+        'role': 'reader',
+    })
+        # Set public access and download URL
+    gfile['alternateLink'] = None  # Set to None to disable webContentLink
+    gfile['shared'] = True
+    
+    gfile['title'] = file_name
+    gfile.Upload()
+
+def upload_file_text(drive, file, folderId):
+    file_name = file.filename
+    gfile = drive.CreateFile({'parents': [{'id': folderId, 'title': file_name}]})
+    
+    # Set content of file
+    gfile.SetContentString(file.read().decode("utf-8"))
+    gfile.Upload() # Upload the file.
+    gfile.InsertPermission({
+        'type': 'anyone',
+        'value': 'anyone',
+        'role': 'reader',
+    })
+        # Set public access and download URL
+    gfile['alternateLink'] = None  # Set to None to disable webContentLink
+    gfile['shared'] = True
+    
+    gfile['title'] = file_name
+    gfile.Upload()
+
+def processFileName(file):
+    split_name = file.filename.split('.')
+    type_file = split_name[-1]
+    file_name = '.'.join(split_name[:-1])
+    return {
+        'typeFile': type_file,
+        'fileName': file_name
+    }
 
 @detect.post("/system-model")
 def detectSystemModel():
@@ -88,8 +143,18 @@ def uploadDataSet():
     folderImageId = room['imageId']
     folderLabelId = room['labelId']
     email = room['email']
+
+    newName = str(uuid.uuid4())
     image = request.files['image']
+    processedFileImage = processFileName(image)
+    type_file_image = processedFileImage['typeFile']
+    image.filename = newName + "." + str(type_file_image)
+
     label = request.files['label']
+    processedFileLabel = processFileName(label)
+    type_file_label = processedFileLabel['typeFile']
+    label.filename = newName + "." + str(type_file_label)
+
     userAdmin = findByEmail(email=email)
     if userAdmin is None:
         return jsonify({
@@ -103,52 +168,11 @@ def uploadDataSet():
         }), HTTP_400_BAD_REQUEST
     drive = getGoogleDrive(credentialsJs=credentialsJs)
     # Upload file image
-    file_name_image = image.filename
-    gfile = drive.CreateFile({'parents': [{'id': folderImageId, 'title': file_name_image}]})
-    
-    # Save file to temporary directory
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        image.save(tmp.name)
-        file_path_image = tmp.name
-    
-    # Set content of file
-    gfile.SetContentFile(file_path_image)
-    gfile.Upload() # Upload the file.
-    gfile.InsertPermission({
-        'type': 'anyone',
-        'value': 'anyone',
-        'role': 'reader',
-    })
-        # Set public access and download URL
-    gfile['alternateLink'] = None  # Set to None to disable webContentLink
-    gfile['shared'] = True
-    
-    gfile['title'] = file_name_image
-    gfile.Upload()
+    upload_file_image(drive=drive, file=image, folderId=folderImageId)
 
     # Upload file label
-    file_name_label = label.filename
-    gfile = drive.CreateFile({'parents': [{'id': folderLabelId, 'title': file_name_label}]})
+    upload_file_text(drive=drive, file=label, folderId=folderLabelId)
     
-    with tempfile.NamedTemporaryFile(delete=False) as tmp1:
-        label.save(tmp1.name)
-        file_path_label = tmp1.name
-    # Set content of file
-    gfile.SetContentFile(file_path_label)
-    gfile.Upload() # Upload the file.
-
-    gfile.InsertPermission({
-        'type': 'anyone',
-        'value': 'anyone',
-        'role': 'reader',
-    })
-        # Set public access and download URL
-    gfile['alternateLink'] = None  # Set to None to disable webContentLink
-    gfile['shared'] = True
-    
-    gfile['title'] = file_name_label
-    gfile.Upload()
-
     return jsonify({
         'status': 'ok'
     })
@@ -189,54 +213,24 @@ def uploadMultiDataSet():
         }), HTTP_400_BAD_REQUEST
     drive = getGoogleDrive(credentialsJs=credentialsJs)
     
+    mapUuid = {}
     for image in images:
-        # Upload file image
-        file_name_image = image.filename
-        gfile = drive.CreateFile({'parents': [{'id': folderImageId, 'title': file_name_image}]})
-        
-        # Save file to temporary directory
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            image.save(tmp.name)
-            file_path_image = tmp.name
-        
-        # Set content of file
-        gfile.SetContentFile(file_path_image)
-        gfile.Upload() # Upload the file.
-        gfile.InsertPermission({
-            'type': 'anyone',
-            'value': 'anyone',
-            'role': 'reader',
-        })
-            # Set public access and download URL
-        gfile['alternateLink'] = None  # Set to None to disable webContentLink
-        gfile['shared'] = True
-        
-        gfile['title'] = file_name_image
-        gfile.Upload()
+        processedFile = processFileName(image)
+        file_name = processedFile['fileName']
+        type_file = processedFile['typeFile']
+        newName = str(uuid.uuid4())
+        mapUuid[file_name] = newName
+        image.filename = newName + "." + str(type_file)
+        upload_file_image(drive=drive, file=image, folderId=folderImageId)
 
     for label in labels:
         # Upload file label
-        file_name_label = label.filename
-        gfile = drive.CreateFile({'parents': [{'id': folderLabelId, 'title': file_name_label}]})
-        
-        with tempfile.NamedTemporaryFile(delete=False) as tmp1:
-            label.save(tmp1.name)
-            file_path_label = tmp1.name
-        # Set content of file
-        gfile.SetContentFile(file_path_label)
-        gfile.Upload() # Upload the file.
-
-        gfile.InsertPermission({
-            'type': 'anyone',
-            'value': 'anyone',
-            'role': 'reader',
-        })
-            # Set public access and download URL
-        gfile['alternateLink'] = None  # Set to None to disable webContentLink
-        gfile['shared'] = True
-        
-        gfile['title'] = file_name_label
-        gfile.Upload()
+        processedFile = processFileName(label)
+        file_name = processedFile['fileName']
+        type_file = processedFile['typeFile']
+        newName = mapUuid.get(file_name)
+        label.filename = newName + "." + str(type_file)
+        upload_file_text(drive=drive, file=label, folderId=folderLabelId)
     
     return jsonify({
         'status': 'ok'
