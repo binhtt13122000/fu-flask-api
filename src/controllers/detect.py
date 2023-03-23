@@ -153,6 +153,95 @@ def uploadDataSet():
         'status': 'ok'
     })
 
+@detect.post("/upload-multi-data")
+def uploadMultiDataSet():
+    if 'images' not in request.files:
+        return jsonify({
+            'message': "Missing file image parameter!",
+            'status': HTTP_400_BAD_REQUEST
+        })
+    if 'labels' not in request.files:
+        return jsonify({
+            'message': "Missing file label parameter!",
+            'status': HTTP_400_BAD_REQUEST
+        })
+    id = request.form['id']
+    room = findById(id)
+    if room is None:
+            return jsonify({"error": "Not found room"}), HTTP_404_NOT_FOUND
+
+    folderImageId = room['imageId']
+    folderLabelId = room['labelId']
+    email = room['email']
+    images = request.files.getlist('images')
+    labels = request.files.getlist('labels')
+
+    userAdmin = findByEmail(email=email)
+    if userAdmin is None:
+        return jsonify({
+            'error': 'User is not found!'
+        }), HTTP_404_NOT_FOUND
+    
+    credentialsJs = userAdmin['credentials']
+    if credentialsJs is None:
+        return jsonify({
+            'error': 'Created User doesnt connect drive!'
+        }), HTTP_400_BAD_REQUEST
+    drive = getGoogleDrive(credentialsJs=credentialsJs)
+    
+    for image in images:
+        # Upload file image
+        file_name_image = image.filename
+        gfile = drive.CreateFile({'parents': [{'id': folderImageId, 'title': file_name_image}]})
+        
+        # Save file to temporary directory
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            image.save(tmp.name)
+            file_path_image = tmp.name
+        
+        # Set content of file
+        gfile.SetContentFile(file_path_image)
+        gfile.Upload() # Upload the file.
+        gfile.InsertPermission({
+            'type': 'anyone',
+            'value': 'anyone',
+            'role': 'reader',
+        })
+            # Set public access and download URL
+        gfile['alternateLink'] = None  # Set to None to disable webContentLink
+        gfile['shared'] = True
+        
+        gfile['title'] = file_name_image
+        gfile.Upload()
+
+    for label in labels:
+        # Upload file label
+        file_name_label = label.filename
+        gfile = drive.CreateFile({'parents': [{'id': folderLabelId, 'title': file_name_label}]})
+        
+        with tempfile.NamedTemporaryFile(delete=False) as tmp1:
+            label.save(tmp1.name)
+            file_path_label = tmp1.name
+        # Set content of file
+        gfile.SetContentFile(file_path_label)
+        gfile.Upload() # Upload the file.
+
+        gfile.InsertPermission({
+            'type': 'anyone',
+            'value': 'anyone',
+            'role': 'reader',
+        })
+            # Set public access and download URL
+        gfile['alternateLink'] = None  # Set to None to disable webContentLink
+        gfile['shared'] = True
+        
+        gfile['title'] = file_name_label
+        gfile.Upload()
+    
+    return jsonify({
+        'status': 'ok'
+    })
+
 @detect.get("/list-files")
 def getListFilesByFolderId():
     folderId = request.args.get('folderId')
