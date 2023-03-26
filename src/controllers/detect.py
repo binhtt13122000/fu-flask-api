@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 import numpy as np
 from PIL import Image
 from src.services.model import extract_img
+from flask_jwt_extended import jwt_required, get_jwt_identity
 import cv2
 import torch
 import base64
@@ -124,6 +125,7 @@ def detectSystemModel():
     return jsonify({'result': result_str, 'detections': detections})
 
 @detect.post("/upload-data")
+@jwt_required()
 def uploadDataSet():
     if 'image' not in request.files:
         return jsonify({
@@ -178,6 +180,7 @@ def uploadDataSet():
     })
 
 @detect.post("/upload-multi-data")
+@jwt_required()
 def uploadMultiDataSet():
     if 'images' not in request.files:
         return jsonify({
@@ -237,13 +240,10 @@ def uploadMultiDataSet():
     })
 
 @detect.get("/list-files")
+@jwt_required()
 def getListFilesByFolderId():
+    email = get_jwt_identity()
     folderId = request.args.get('folderId')
-    email = request.args.get('email')
-    if email is None:
-        return jsonify({
-            'error': 'Required email parameter!'
-        }), HTTP_400_BAD_REQUEST
 
     userAdmin = findByEmail(email=email)
     if userAdmin is None:

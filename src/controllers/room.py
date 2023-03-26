@@ -1,5 +1,6 @@
 from src.constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from src.dtos.room import Room
 from src.services.room import findById, create, getList,delete, update, findByName
 import json
@@ -26,13 +27,11 @@ def getGoogleDrive(credentialsJs):
     return drive
 
 @ room.post("/create-room")
+@jwt_required()
 @cross_origin()
 def createRoom():
-    email = request.json["email"]
-    if email is None:
-        return jsonify({
-            'error': 'Required email parameter!'
-        }), HTTP_400_BAD_REQUEST
+    email = get_jwt_identity()
+
     userAdmin = findByEmail(email=email)
     if userAdmin is None:
         return jsonify({
@@ -45,18 +44,12 @@ def createRoom():
         return jsonify({
             'error': 'Created User doesnt connect drive!'
         }), HTTP_400_BAD_REQUEST
-    print("1");
     folderParentId = userAdmin['folderParentId']
-    print("2");
     drive = getGoogleDrive(credentialsJs=credentialsJs)
-    print("3");
     roomName = request.json["name"]
     root_folder = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()[0]
-    print("4");
     existing_folders = drive.ListFile({'q': f"'{root_folder['id']}' in parents and trashed=false"}).GetList()
-    print("5");
     folder_exists = any([folder['title'].lower() == roomName.lower() for folder in existing_folders])
-    print("6");
     # Create folder room
     if not folder_exists:
         # Check room name have been existed in database
@@ -121,13 +114,11 @@ def createRoom():
         }), HTTP_400_BAD_REQUEST
 
 @room.get("/list-room")
+@jwt_required()
 @cross_origin()
 def getRooms():
-    email = request.args.get('email')
-    if email is None:
-        return jsonify({
-            'error': 'Required email parameter!'
-        }), HTTP_400_BAD_REQUEST
+    email = get_jwt_identity()
+    
     userAdmin = findByEmail(email=email)
     if userAdmin is None:
         return jsonify({
@@ -161,7 +152,6 @@ def getRoomsMobile():
 @room.get("/<string:room_id>")
 @cross_origin()
 def getRoomById(room_id):
-    print(room_id)
     room = findById(room_id)
     if room is not None:
         room['_id'] = str(room['_id'])
@@ -173,18 +163,15 @@ def getRoomById(room_id):
 
 @room.put('/update-room')
 @cross_origin()
+@jwt_required()
 def updateRoom():
     try:
         data = request.get_json()
         id = data.get('id')
         newName = data.get('name')
         trainURL = data.get('trainURL')
-        email = request.args.get('email')
-        if email is None:
-            return jsonify({
-                'error': 'Required email parameter!'
-            }), HTTP_400_BAD_REQUEST
-        
+        email = get_jwt_identity()
+       
         room = findById(id)
         if room is None:
             return jsonify({"error": "Not found"}), HTTP_404_NOT_FOUND
@@ -219,13 +206,11 @@ def updateRoom():
 
 
 @room.delete('/delete-room/<string:room_id>')
+@jwt_required()
 @cross_origin()
 def deleteRoom(room_id):
-    email = request.args.get('email')
-    if email is None:
-        return jsonify({
-            'error': 'Required email parameter!'
-        }), HTTP_400_BAD_REQUEST
+    email = get_jwt_identity()
+   
     room = findById(room_id)
     if room is None:
         return jsonify({"error": "Not found"}), HTTP_404_NOT_FOUND
